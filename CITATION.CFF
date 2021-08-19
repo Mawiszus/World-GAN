@@ -1,0 +1,22 @@
+# YAML 1.2
+---
+authors: 
+  -
+    affiliation: "Leibniz University Hannover"
+    family-names: Awiszus
+    given-names: Maren
+  -
+    affiliation: "Leibniz University Hannover"
+    family-names: Schubert
+    given-names: Frederik
+    orcid: "https://orcid.org/0000-0001-8312-3943"
+  -
+    affiliation: "Leibniz University Hannover"
+    family-names: Rosenhahn
+    given-names: Bodo
+cff-version: "1.1.0"
+date-released: 2021-08-18
+license: MIT
+message: "If you use this software, please cite it using these metadata."
+title: "World-GAN: a Generative Model for Minecraft Worlds"
+...
