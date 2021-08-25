@@ -7,7 +7,7 @@ model = transformers.BertModel.from_pretrained('bert-base-uncased')
 model.eval()
 tokenizer = transformers.BertTokenizer.from_pretrained('bert-base-uncased')
 
-prepath = "/home/schubert/projects/TOAD-GAN/input/minecraft/ruins/"
+prepath = "/home/awiszus/Project/World-GAN/input/minecraft/ruins/"
 token_dict = load_pkl(
     "representations", prepath)
 token_list = list(token_dict.keys())
@@ -35,7 +35,7 @@ from adjustText import adjust_text
 
 
 fig = plt.figure()
-embedding = pymde.preserve_distances(natural_tokens, embedding_dim=2, verbose=True).embed()
+embedding = pymde.preserve_distances(natural_tokens, embedding_dim=3, verbose=True).embed()
 ax = pymde.plot(embedding, marker_size=5)
 annotations = []
 for i, token_name in enumerate(token_names):

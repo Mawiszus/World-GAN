@@ -111,6 +111,9 @@ class Config(Tap):
             #                            prepath='/home/awiszus/Project/TOAD-GAN/input/minecraft/')
             self.block2repr = load_pkl("representations",
                                         f"/home/schubert/projects/TOAD-GAN/input/minecraft/{self.input_area_name}/")
+        elif self.repr_type == "bert":
+            self.block2repr = load_pkl("natural_representations_small",
+                                        f"/home/awiszus/Project/World-GAN/input/minecraft/{self.input_area_name}/")
         
         else:
-            AttributeError("unexpected repr_type, use [None, block2vec, autoencoder]")
+            AttributeError("unexpected repr_type, use [None, block2vec, bert, autoencoder]")
