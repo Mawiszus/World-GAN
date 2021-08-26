@@ -149,7 +149,7 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
                     token_list = opt.token_list
                     props = opt.props
                 else:
-                    if opt.repr_type == "block2vec":
+                    if opt.repr_type == "block2vec" or opt.repr_type == "bert":
                         token_list = list(opt.block2repr.keys())
                     else:
                         # token_list = opt.token_list
