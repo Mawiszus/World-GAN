@@ -1,6 +1,7 @@
 # Code inspired by https://github.com/tamarott/SinGAN
 import subprocess
 from generate_samples import generate_samples
+from block_histograms import make_block_histogram
 from train import train
 from minecraft.level_utils import read_level as mc_read_level
 from minecraft.level_utils import clear_empty_world
@@ -8,6 +9,7 @@ from config import Config
 from loguru import logger
 import wandb
 import sys
+import os
 import torch
 
 
@@ -78,6 +80,9 @@ def main():
         use_maps = noise_maps
     generate_samples(generators, use_maps, use_reals,
                      noise_amplitudes, opt, render_images=False, num_samples=100, in_s=in_s)
+
+    # Calculate Block histogram on random samples
+    make_block_histogram(os.path.join(opt.out_, "random_samples/torch_blockdata"), True)
 
 
 if __name__ == "__main__":
