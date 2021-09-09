@@ -13,11 +13,16 @@ model.eval()
 tokenizer = transformers.BertTokenizer.from_pretrained(model_str)
 unmasker = transformers.pipeline('fill-mask', model=model_str)
 
-# names = ["ruins", "simple_beach", "desert", "plains", "swamp", "vanilla_village", "vanilla_mineshaft"]
-names = ["ruins"]
+names = ["ruins", "simple_beach", "desert", "plains", "swamp",
+         "vanilla_village", "vanilla_mineshaft"]
+world_names_and_pl = [("ruins", True), ("beach", False), ("desert", False), ("plains", True), ("swamp", False),
+                      ("village", False), ("mineshaft", False)]
+# names = ["ruins"]
+# world_names_and_pl = [("ruins", True)]
 # names = ["vanilla_village"]
+# world_names_and_pl = [("village", False)]
 
-for name in names:
+for n, name in enumerate(names):
     prepath = f"/home/awiszus/Project/World-GAN/input/minecraft/{name}/"
     token_dict = load_pkl(
         "representations", prepath)
@@ -35,7 +40,8 @@ for name in names:
         else:
             is_plural = True
             # token_names.append(f"These {clean_token} are part of this village.")
-        token_names.append(get_sentence(clean_token, is_plural, "ruins", True, unmasker))
+        token_names.append(get_sentence(clean_token, is_plural, world_names_and_pl[n][0], world_names_and_pl[n][1],
+                                        unmasker))
         clean_names.append(clean_token)
 
     # token_names: List[str] = [token.replace("minecraft:", "").replace("_", " ").replace("chest", "treasure chest")
