@@ -117,6 +117,9 @@ def train(real, opt: Config):
 
         # Initialize models
         D, G = init_models(opt, use_softmax)
+        if current_scale > 0:
+            G.load_state_dict(torch.load('%s/%d/G.pth' % (opt.out_, current_scale - 1)))
+            D.load_state_dict(torch.load('%s/%d/D.pth' % (opt.out_, current_scale - 1)))
 
         # Actually train the current scale
         z_opt, input_from_prev_scale, G = train_single_scale(D,  G, reals, generators, noise_maps,

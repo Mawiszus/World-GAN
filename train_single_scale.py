@@ -1,3 +1,4 @@
+from config import Config
 import os
 import subprocess
 
@@ -43,7 +44,8 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
             real_group.append(scale_group[current_scale])
             nzx_group.append(scale_group[current_scale].shape[2])
             nzy_group.append(scale_group[current_scale].shape[3])
-            nz_group.append((scale_group[current_scale].shape[2], scale_group[current_scale].shape[3]))
+            nz_group.append(
+                (scale_group[current_scale].shape[2], scale_group[current_scale].shape[3]))
 
         curr_noises = [0 for _ in range(len(real_group))]
         curr_prevs = [0 for _ in range(len(real_group))]
@@ -53,7 +55,8 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
         real = reals[current_scale]
         nz = real.shape[2:]
 
-    padsize = int(1 * opt.num_layer)  # As kernel size is always 3 currently, padsize goes up by one per layer
+    # As kernel size is always 3 currently, padsize goes up by one per layer
+    padsize = int(1 * opt.num_layer)
 
     if not opt.pad_with_noise:
         # pad_noise = nn.ConstantPad3d(padsize, 0)
@@ -66,26 +69,33 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
         pad_image = nn.ReplicationPad3d(padsize)
 
     # setup optimizer
-    optimizerD = optim.Adam(D.parameters(), lr=opt.lr_d, betas=(opt.beta1, 0.999))
-    optimizerG = optim.Adam(G.parameters(), lr=opt.lr_g, betas=(opt.beta1, 0.999))
-    schedulerD = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizerD, milestones=[1600, 2500], gamma=opt.gamma)
-    schedulerG = torch.optim.lr_scheduler.MultiStepLR(optimizer=optimizerG, milestones=[1600, 2500], gamma=opt.gamma)
+    optimizerD = optim.Adam(D.parameters(), lr=opt.lr_d,
+                            betas=(opt.beta1, 0.999))
+    optimizerG = optim.Adam(G.parameters(), lr=opt.lr_g,
+                            betas=(opt.beta1, 0.999))
+    schedulerD = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer=optimizerD, milestones=[1600, 2500], gamma=opt.gamma)
+    schedulerG = torch.optim.lr_scheduler.MultiStepLR(
+        optimizer=optimizerG, milestones=[1600, 2500], gamma=opt.gamma)
 
     if current_scale == 0:  # Generate new noise
         if opt.use_multiple_inputs:
             z_opt_group = []
             for nzx, nzy in zip(nzx_group, nzy_group):
-                z_opt = generate_spatial_noise([1, opt.nc_current, nzx, nzy], device=opt.device)
+                z_opt = generate_spatial_noise(
+                    [1, opt.nc_current, nzx, nzy], device=opt.device)
                 z_opt = pad_noise(z_opt)
                 z_opt_group.append(z_opt)
         else:
-            z_opt = generate_spatial_noise((1, opt.nc_current) + nz, device=opt.device)
+            z_opt = generate_spatial_noise(
+                (1, opt.nc_current) + nz, device=opt.device)
             z_opt = pad_noise(z_opt)
     else:  # Add noise to previous output
         if opt.use_multiple_inputs:
             z_opt_group = []
             for nzx, nzy in zip(nzx_group, nzy_group):
-                z_opt = torch.zeros([1, opt.nc_current, nzx, nzy]).to(opt.device)
+                z_opt = torch.zeros(
+                    [1, opt.nc_current, nzx, nzy]).to(opt.device)
                 z_opt = pad_noise(z_opt)
                 z_opt_group.append(z_opt)
         else:
@@ -103,18 +113,24 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
     for p in G.parameters():
         grad_g.append(torch.zeros(p.shape).to(opt.device))
 
+    k_decay = 0.99
+    k_min = 0.75
+    k = 1.0
+
     for epoch in tqdm(range(opt.niter)):
         step = current_scale * opt.niter + epoch
         if opt.use_multiple_inputs:
             group_steps = len(real_group)
             noise_group = []
             for nzx, nzy in zip(nzx_group, nzy_group):
-                noise_ = generate_spatial_noise([1, opt.nc_current, nzx, nzy], device=opt.device)
+                noise_ = generate_spatial_noise(
+                    [1, opt.nc_current, nzx, nzy], device=opt.device)
                 noise_ = pad_noise(noise_)
                 noise_group.append(noise_)
         else:
             group_steps = 1
-            noise_ = generate_spatial_noise((1, opt.nc_current) + nz, device=opt.device)
+            noise_ = generate_spatial_noise(
+                (1, opt.nc_current) + nz, device=opt.device)
             noise_ = pad_noise(noise_)
 
         for curr_inp in range(group_steps):
@@ -141,23 +157,25 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
 
                 errD_real.backward(retain_graph=True)
 
-                grads_after = []
-                cos_sim = []
-                for i, p in enumerate(D.parameters()):
-                    grads_after.append(p.grad)
-                    cos_sim.append(nn.CosineSimilarity(-1)(grad_d_real[i], p.grad).mean().item())
+                # grads_after = []
+                # cos_sim = []
+                # for i, p in enumerate(D.parameters()):
+                #     grads_after.append(p.grad)
+                #     cos_sim.append(nn.CosineSimilarity(-1)(grad_d_real[i], p.grad).mean().item())
 
-                diff_d_real = np.mean(cos_sim)
+                # diff_d_real = np.mean(cos_sim)
 
-                grad_d_real = grads_after
+                # grad_d_real = grads_after
 
                 # train with fake
                 if (j == 0) & (epoch == 0):
                     if current_scale == 0:  # If we are in the lowest scale, noise is generated from scratch
-                        prev = torch.zeros((1, opt.nc_current) + nz).to(opt.device)
+                        prev = torch.zeros(
+                            (1, opt.nc_current) + nz).to(opt.device)
                         prev_scale_results = prev
                         prev = pad_image(prev)
-                        z_prev = torch.zeros((1, opt.nc_current) + nz).to(opt.device)
+                        z_prev = torch.zeros(
+                            (1, opt.nc_current) + nz).to(opt.device)
                         z_prev = pad_noise(z_prev)
                         opt.noise_amp = 1
                     else:  # First step in NOT the lowest scale
@@ -165,13 +183,16 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                         prev = draw_concat(generators, noise_maps, reals, noise_amplitudes, prev_scale_results,
                                            "rand", pad_noise, pad_image, opt)
 
-                        prev = interpolate3D(prev, real.shape[-3:], mode="bilinear", align_corners=True)
+                        prev = interpolate3D(
+                            prev, real.shape[-3:], mode="bilinear", align_corners=True)
 
                         prev = pad_image(prev)
                         z_prev = draw_concat(generators, noise_maps, reals, noise_amplitudes, prev_scale_results,
                                              "rec", pad_noise, pad_image, opt)
-                        z_prev = interpolate3D(z_prev, real.shape[-3:], mode="bilinear", align_corners=True)
-                        opt.noise_amp = update_noise_amplitude(z_prev, real, opt)
+                        z_prev = interpolate3D(
+                            z_prev, real.shape[-3:], mode="bilinear", align_corners=True)
+                        opt.noise_amp = update_noise_amplitude(
+                            z_prev, real, opt)
                         z_prev = pad_image(z_prev)
                 else:  # Any other step
                     if opt.use_multiple_inputs:
@@ -180,7 +201,8 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                     prev = draw_concat(generators, noise_maps, reals, noise_amplitudes, prev_scale_results,
                                        "rand", pad_noise, pad_image, opt)
 
-                    prev = interpolate3D(prev, real.shape[-3:], mode="bilinear", align_corners=False)
+                    prev = interpolate3D(
+                        prev, real.shape[-3:], mode="bilinear", align_corners=False)
 
                     prev = pad_image(prev)
 
@@ -196,26 +218,28 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                 errD_fake.backward(retain_graph=False)
 
                 # Gradient Penalty
-                gradient_penalty = calc_gradient_penalty(D, real, fake, opt.lambda_grad, opt.device)
+                gradient_penalty = calc_gradient_penalty(
+                    D, real, fake, opt.lambda_grad, opt.device)
                 gradient_penalty.backward(retain_graph=False)
 
-                grads_after = []
-                cos_sim = []
-                for i, p in enumerate(D.parameters()):
-                    grads_after.append(p.grad)
-                    cos_sim.append(nn.CosineSimilarity(-1)(grad_d_fake[i], p.grad).mean().item())
+                # grads_after = []
+                # cos_sim = []
+                # for i, p in enumerate(D.parameters()):
+                #     grads_after.append(p.grad)
+                #     cos_sim.append(nn.CosineSimilarity(-1)(grad_d_fake[i], p.grad).mean().item())
 
-                diff_d_fake = np.mean(cos_sim)
+                # diff_d_fake = np.mean(cos_sim)
 
-                grad_d_fake = grads_after
+                # grad_d_fake = grads_after
 
                 # Logging:
                 if step % 10 == 0:
                     wandb.log({f"D(G(z))@{current_scale}": errD_fake.item(),
                                f"D(x)@{current_scale}": -errD_real.item(),
                                f"gradient_penalty@{current_scale}": gradient_penalty.item(),
-                               f"D_real_grad@{current_scale}": diff_d_real,
-                               f"D_fake_grad@{current_scale}": diff_d_fake,
+                               #    f"D_real_grad@{current_scale}": diff_d_real,
+                               #    f"D_fake_grad@{current_scale}": diff_d_fake,
+                               "k": k
                                },
                               step=step, sync=False)
                 optimizerD.step()
@@ -227,7 +251,6 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                     curr_prevs[curr_inp] = prev
                     curr_z_prevs[curr_inp] = z_prev
 
-
             ############################
             # (2) Update G network: maximize D(G(z))
             ###########################
@@ -237,24 +260,30 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                 fake = G(noise.detach(), prev.detach(), temperature=1)
                 output = D(fake)
 
-                errG = -output.mean()
+                top_k_output, _ = torch.topk(
+                    output.view(-1), k=int(k * torch.numel(output)))
+                if step % 60 == 0:
+                    k = max(k_decay * k, k_min)
+
+                errG = -top_k_output.mean()
                 errG.backward(retain_graph=False)
 
-                grads_after = []
-                cos_sim = []
-                for i, p in enumerate(G.parameters()):
-                    grads_after.append(p.grad)
-                    cos_sim.append(nn.CosineSimilarity(-1)(grad_g[i], p.grad).mean().item())
+                # grads_after = []
+                # cos_sim = []
+                # for i, p in enumerate(G.parameters()):
+                #     grads_after.append(p.grad)
+                #     cos_sim.append(nn.CosineSimilarity(-1)(grad_g[i], p.grad).mean().item())
 
-                diff_g = np.mean(cos_sim)
+                # diff_g = np.mean(cos_sim)
 
-                grad_g = grads_after
+                # grad_g = grads_after
 
                 if opt.alpha != 0:  # i. e. we are trying to find an exact recreation of our input in the lat space
                     Z_opt = opt.noise_amp * z_opt + z_prev
                     G_rec = G(Z_opt.detach(), z_prev, temperature=1)
                     rec_loss = opt.alpha * F.mse_loss(G_rec, real)
-                    rec_loss.backward(retain_graph=False)  # TODO: Check for unexpected argument retain_graph=True
+                    # TODO: Check for unexpected argument retain_graph=True
+                    rec_loss.backward(retain_graph=False)
                     rec_loss = rec_loss.detach()
                 else:  # We are not trying to find an exact recreation
                     rec_loss = torch.zeros([])
@@ -266,7 +295,8 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
         if step % 10 == 0:
             wandb.log({f"noise_amplitude@{current_scale}": opt.noise_amp,
                        f"rec_loss@{current_scale}": rec_loss.item(),
-                       f"G_grad@{current_scale}": diff_g},
+                       #    f"G_grad@{current_scale}": diff_g
+                       },
                       step=step, sync=False, commit=True)
 
         # Rendering and logging images of levels
@@ -277,24 +307,29 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
 
             try:
                 subprocess.call(["wine", '--version'])
-                real_scaled = to_level(real.detach(), token_list, opt.block2repr, opt.repr_type)
+                real_scaled = to_level(
+                    real.detach(), token_list, opt.block2repr, opt.repr_type)
 
                 # Minecraft World
                 worldname = 'Curr_Empty_World'
                 clear_empty_world(opt.output_dir, worldname)  # reset tmp world
                 to_render = [real_scaled, to_level(fake.detach(), token_list, opt.block2repr, opt.repr_type),
-                            to_level(G(Z_opt.detach(), z_prev), token_list, opt.block2repr, opt.repr_type)]
-                render_names = [f"real@{current_scale}", f"G(z)@{current_scale}", f"G(z_opt)@{current_scale}"]
+                             to_level(G(Z_opt.detach(), z_prev), token_list, opt.block2repr, opt.repr_type)]
+                render_names = [
+                    f"real@{current_scale}", f"G(z)@{current_scale}", f"G(z_opt)@{current_scale}"]
                 obj_pth = os.path.join(opt.out_, f"objects/{current_scale}")
                 os.makedirs(obj_pth, exist_ok=True)
                 for n, level in enumerate(to_render):
                     pos = n * (level.shape[0] + 5)
-                    save_level_to_world(opt.output_dir, worldname, (pos, 0, 0), level, token_list, opt.props)
+                    save_level_to_world(
+                        opt.output_dir, worldname, (pos, 0, 0), level, token_list, opt.props)
                     curr_coords = [[pos, pos + real_scaled.shape[0]],
                                    [0, real_scaled.shape[1]],
                                    [0, real_scaled.shape[2]]]
-                    render_pth = render_minecraft(worldname, curr_coords, obj_pth, render_names[n])
-                    wandb.log({render_names[n]: wandb.Object3D(open(render_pth))}, commit=False)
+                    render_pth = render_minecraft(
+                        worldname, curr_coords, obj_pth, render_names[n])
+                    rendered_images = render_world(render_pth, opt)
+                    wandb.log({render_names[n]: wandb.Image(rendered_images)}, commit=False)
             except OSError:
                 pass
 
@@ -311,3 +346,56 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
     save_networks(G, D, z_opt, opt)
     wandb.save(opt.outf)
     return z_opt, input_from_prev_scale, G
+
+
+def render_world(render_path: str, opt: Config, num_viewpoints: int = 20):
+    from pytorch3d.io import load_objs_as_meshes
+    from pytorch3d.renderer import (
+        look_at_view_transform,
+        FoVPerspectiveCameras,
+        PointLights,
+        Materials,
+        RasterizationSettings,
+        MeshRenderer,
+        MeshRasterizer,
+        HardFlatShader,
+    )
+    from torchvision.utils import make_grid
+    from torchvision.transforms.functional import to_pil_image
+    import math
+    mesh = load_objs_as_meshes([render_path], device=opt.device)
+    meshes = mesh.extend(num_viewpoints)
+    lights = PointLights(device=opt.device, location=[[0.0, 0.0, -3.0]])
+
+    elev = torch.linspace(0, 180, num_viewpoints)
+    azim = torch.linspace(-180, 180, num_viewpoints)
+
+    R, T = look_at_view_transform(dist=3, elev=elev, azim=azim)
+    cameras = FoVPerspectiveCameras(device=opt.device, R=R, T=T)
+    materials = Materials(
+        device=opt.device,
+        shininess=0.0
+    )
+    raster_settings = RasterizationSettings(
+        image_size=512,
+        blur_radius=0.0,
+        faces_per_pixel=1,
+    )
+    renderer = MeshRenderer(
+        rasterizer=MeshRasterizer(
+            cameras=cameras,
+            raster_settings=raster_settings
+        ),
+        shader=HardFlatShader(
+            device=opt.device,
+            cameras=cameras,
+            lights=lights
+        )
+    )
+
+    # Move the light back in front of the cow which is facing the -z direction.
+    lights.location = torch.tensor([[1.0, 1.0, -3.0]], device=opt.device)
+    images = renderer(meshes, cameras=cameras,
+                      lights=lights, materials=materials)
+    image_grid = to_pil_image(make_grid(torch.permute(images[..., :3], dims=[0, 3, 1, 2]), nrow=math.floor(math.sqrt(num_viewpoints))))
+    return image_grid
