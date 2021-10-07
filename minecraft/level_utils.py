@@ -3,6 +3,7 @@ from config import Config
 import torch
 import numpy as np
 import os
+import time
 import shutil
 from loguru import logger
 import torch.nn.functional as F
@@ -129,7 +130,7 @@ def one_hot_to_blockdata_level(oh_level, tokens, block2repr, repr_type):
                     for x in range(bdata.shape[2]):
                         bdata[y, z, x] = oh_level[:, :, y, z, x].argmax()
 
-        elif repr_type == "block2vec" or repr_type == "bert":
+        elif repr_type == "block2vec" or repr_type == "bert" or repr_type == "neighbert":
             reprs = torch.stack(list(block2repr.values()))
             o = oh_level.squeeze().permute(1, 2, 3, 0)[..., None]
             r = reprs.to("cuda").permute(1, 0)[None, None, None, ...]
@@ -156,6 +157,25 @@ def read_level(opt: Config):
 
     level, uniques, props = read_level_from_file(opt.input_dir, opt.input_name, opt.coords,
                                                  opt.block2repr, opt.repr_type)
+
+    if opt.repr_type == "neighbert" or opt.repr_type == "one-hot-neighbors":
+        print("Starting neighbert level...")
+        st = time.time()
+        new_level, uniques, new_tok_list, props = make_neighbor_one_hot_level(level, uniques, props)
+        opt.token_list_translation = new_tok_list
+
+        if opt.repr_type == "neighbert":
+            dim = len(opt.block2repr[str(new_level[0, :, 0, 0, 0])])
+            level = torch.zeros((1, dim, new_level.shape[-3], new_level.shape[-2], new_level.shape[-1]))
+            for y in range(level.shape[-3]):
+                for z in range(level.shape[-2]):
+                    for x in range(level.shape[-1]):
+                        level[0, :, y, z, x] = opt.block2repr[str(new_level[0, :, y, z, x])]
+
+            print(f"Finished making neighbert level. This took {time.time()-st:.2f} seconds")
+        else:
+            level = new_level
+
     # Adjust token list depending on representation
     opt.token_list = uniques
     if opt.repr_type == "autoencoder":
@@ -164,7 +184,7 @@ def read_level(opt: Config):
             raise AssertionError("Tokens were read in a different order than before")
 
     opt.props = props  # Properties need to be saved for later for rendering
-    logger.info("Tokens in level {}", opt.token_list)
+    logger.info(f"{len(opt.token_list)} Tokens in level: {opt.token_list}")
     opt.nc_current = level.shape[1]  # nc = number of channels
     return level
 
@@ -245,11 +265,14 @@ def save_level_to_world(input_dir, input_name, start_coords, bdata_level, token_
 
 
 def save_oh_to_wrld_directly(input_dir, input_name, start_coords, oh_level, block2repr, repr_type, token_list=None, props=None, debug=False):
+    # unused, therefore not adapted to neighbert
     if repr_type == "autoencoder":
         oh_level = block2repr["decoder"](oh_level).detach()
     elif repr_type == "block2vec" or repr_type == "bert":
         token_list = list(block2repr.keys())
-
+    elif repr_type == "neighbert":
+        if not token_list:
+            ValueError("If repr_type=neighbert, token_list cannot be None. It needs to hold the translations list.")
     if not props:
         props = [{} for _ in range(len(token_list))]
 
@@ -262,11 +285,12 @@ def save_oh_to_wrld_directly(input_dir, input_name, start_coords, oh_level, bloc
                     act_j = j-start_coords[0]
                     act_k = k-start_coords[1]
                     act_l = l-start_coords[2]
-                    if repr_type == "block2vec" or repr_type == "bert":
+                    if repr_type == "block2vec" or repr_type == "bert" or repr_type == "neighbert":
                         dists = np.zeros((len(token_list),))
                         for i, rep in enumerate(token_list):
                             dists[i] = F.mse_loss(block2repr[rep], oh_level[0, :, act_j, act_k, act_l].detach().cpu()).detach()
                         bdata[act_j, act_k, act_l] = dists.argmin()
+
                     else:
                         bdata[act_j, act_k, act_l] = oh_level[:, :, act_j, act_k, act_l].argmax()
 
@@ -282,3 +306,35 @@ def clear_empty_world(worlds_folder, empty_world_name='Curr_Empty_World'):
     shutil.rmtree(dst)
     shutil.copytree(src, dst)
 
+
+def make_neighbor_one_hot_level(one_hot_level, tok_list, props):
+    new_level = torch.zeros_like(one_hot_level)
+    new_uniques = []
+    new_tok_list = []
+    new_props = []
+    for x in range(one_hot_level.shape[-3]):
+        x_start = max(x - 1, 0)
+        x_end = min(x + 1, one_hot_level.shape[-3])
+        for y in range(one_hot_level.shape[-2]):
+            y_start = max(y - 1, 0)
+            y_end = min(y + 1, one_hot_level.shape[-2])
+            for z in range(one_hot_level.shape[-1]):
+                z_start = max(z - 1, 0)
+                z_end = min(z + 1, one_hot_level.shape[-1])
+
+                cutout = one_hot_level[:, :, x_start:x_end, y_start:y_end, z_start:z_end]
+                new_vec = torch.zeros((one_hot_level.shape[1],))
+
+                for i in range(one_hot_level.shape[1]):
+                    new_vec[i] = 1 if cutout[0, i].sum() > 0 else 0
+
+                # Set actual block! (we encode with -1)
+                currblock = one_hot_level[0, :,  x, y, z].argmax()
+                new_vec[currblock] = -1
+                new_level[0, :, x, y, z] = new_vec
+
+                if not any([str(new_vec) == vec for vec in new_uniques]):
+                    new_uniques.append(str(new_vec))
+                    new_tok_list.append(tok_list[currblock])
+                    new_props.append(props[currblock])
+    return new_level, new_uniques, new_tok_list, new_props

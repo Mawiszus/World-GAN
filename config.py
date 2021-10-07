@@ -1,7 +1,7 @@
 # Code based on https://github.com/tamarott/SinGAN
 import argparse
 import random
-from typing import List, Literal, Optional, Union
+from typing import List, Optional, Union
 
 import numpy as np
 import torch
@@ -114,6 +114,12 @@ class Config(Tap):
         elif self.repr_type == "bert":
             self.block2repr = load_pkl("natural_representations_small",
                                         f"/home/awiszus/Project/World-GAN/input/minecraft/{self.input_area_name}/")
+        elif self.repr_type == "one-hot-neighbors":
+            self.block2repr = None
+        elif self.repr_type == "neighbert":
+            self.block2repr = load_pkl("natural_representations_small_neighbors",
+                                        f"/home/awiszus/Project/World-GAN/input/minecraft/{self.input_area_name}/")
         
         else:
-            AttributeError("unexpected repr_type, use [None, block2vec, bert, autoencoder]")
+            AttributeError("unexpected repr_type, use "
+                           "[None, block2vec, bert, one-hot-neighbors, neighbert, autoencoder]")

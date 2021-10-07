@@ -149,7 +149,7 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
                     token_list = opt.token_list
                     props = opt.props
                 else:
-                    if opt.repr_type == "block2vec" or opt.repr_type == "bert":
+                    if opt.repr_type == "block2vec" or opt.repr_type == "bert" or opt.repr_type == "neighbert":
                         token_list = list(opt.block2repr.keys())
                     else:
                         # token_list = opt.token_list
@@ -185,6 +185,10 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
 
                 # Convert to level
                 to_level = one_hot_to_blockdata_level
+                if opt.repr_type == "neighbert":
+                    render_token_list = opt.token_list_translation
+                else:
+                    render_token_list = token_list
 
                 # Save level
                 # Minecraft
@@ -197,7 +201,8 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
                     if render_images:
                         real_pth = "%s/reals" % dir2save
                         os.makedirs(real_pth, exist_ok=True)
-                        save_level_to_world(opt.output_dir, opt.output_name, (0, 0, 0), real_level, token_list, props)
+                        save_level_to_world(opt.output_dir, opt.output_name, (0, 0, 0), real_level,
+                                            render_token_list, props)
                         curr_coords = [[0, real_level.shape[0]],
                                        [0, real_level.shape[1]],
                                        [0, real_level.shape[2]]]
@@ -219,7 +224,8 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
                         x, z = np.unravel_index(n, [len_n, len_n])  # get x, z pos according to index n
                         posx = x * (level.shape[0] + 5)
                         posz = z * (level.shape[2] + 5)
-                        save_level_to_world(opt.output_dir, opt.output_name, (posx, 0, posz), level, token_list, props)
+                        save_level_to_world(opt.output_dir, opt.output_name, (posx, 0, posz), level,
+                                            render_token_list, props)
                         # save_oh_to_wrld_directly(opt.output_dir, opt.output_name, (posx, 0, posz), I_curr.detach(),
                         #                          opt.block2repr, opt.repr_type)
                         curr_coords = [[posx, posx + level.shape[0]],

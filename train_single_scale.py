@@ -319,6 +319,8 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                     f"real@{current_scale}", f"G(z)@{current_scale}", f"G(z_opt)@{current_scale}"]
                 obj_pth = os.path.join(opt.out_, f"objects/{current_scale}")
                 os.makedirs(obj_pth, exist_ok=True)
+                if opt.repr_type == "neighbert" or opt.repr_type == "one-hot-neighbors":
+                    token_list = opt.token_list_translation
                 for n, level in enumerate(to_render):
                     pos = n * (level.shape[0] + 5)
                     save_level_to_world(

@@ -141,6 +141,8 @@ def train(real, opt: Config):
         torch.save(noise_amplitudes, "%s/noise_amplitudes.pth" % (opt.out_))
         torch.save(opt.num_layer, "%s/num_layer.pth" % (opt.out_))
         torch.save(opt.token_list, "%s/token_list.pth" % (opt.out_))
+        if opt.repr_type == "neighbert":
+            torch.save(opt.token_list_translation, "%s/token_list_translation.pth" % (opt.out_))
         wandb.save("%s/*.pth" % opt.out_)
 
         torch.save(G.state_dict(), "%s/state_dicts/G_%d.pth" % (opt.out_, current_scale))
