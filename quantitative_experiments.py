@@ -30,8 +30,8 @@ class QuantitativeExperimentArgs(Tap):
         os.makedirs(self.output_dir, exist_ok=True)
 
 
-def compute_levenshtein(real: np.ndarray, generated: List[np.ndarray]):
-    generated_str = ["".join(gen.flatten().astype(str)) for gen in generated]
+def compute_levenshtein(real: np.ndarray, generated: List[torch.Tensor]):
+    generated_str = ["".join(gen.numpy().flatten().astype(str)) for gen in generated]
     distances = [levenshtein_distance(gen_str_1, gen_str_2)
                  for gen_str_1, gen_str_2 in product(generated_str, generated_str)]
     return np.mean(distances), np.var(distances)
