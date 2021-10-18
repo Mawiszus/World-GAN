@@ -114,6 +114,9 @@ class Config(Tap):
         elif self.repr_type == "bert":
             self.block2repr = load_pkl("natural_representations_small",
                                         f"/home/awiszus/Project/World-GAN/input/minecraft/{self.input_area_name}/")
+        elif self.repr_type == "bert_naive":
+            self.block2repr = load_pkl("natural_representations_small_naive",
+                                        f"/home/schubert/projects/World-GAN/input/minecraft/{self.input_area_name}/")                            
         elif self.repr_type == "one-hot-neighbors":
             self.block2repr = None
         elif self.repr_type == "neighbert":

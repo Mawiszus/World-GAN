@@ -130,7 +130,7 @@ def one_hot_to_blockdata_level(oh_level, tokens, block2repr, repr_type):
                     for x in range(bdata.shape[2]):
                         bdata[y, z, x] = oh_level[:, :, y, z, x].argmax()
 
-        elif repr_type == "block2vec" or repr_type == "bert" or repr_type == "neighbert":
+        elif repr_type == "block2vec" or repr_type == "bert" or repr_type == "neighbert" or repr_type == "bert_naive":
             reprs = torch.stack(list(block2repr.values()))
             o = oh_level.squeeze().permute(1, 2, 3, 0)[..., None]
             r = reprs.to("cuda").permute(1, 0)[None, None, None, ...]
@@ -192,7 +192,7 @@ def read_level(opt: Config):
 def read_level_from_file(input_dir, input_name, coords, block2repr, repr_type, debug=False):
     """ coords is ((y0,yend), (z0,zend), (x0,xend)) """
 
-    if repr_type == "block2vec" or repr_type == "bert":
+    if repr_type == "block2vec" or repr_type == "bert" or repr_type == "bert_naive":
         # Read Representations
         uniques = [u for u in block2repr.keys()]
         props = [None for _ in range(len(uniques))]
@@ -213,7 +213,7 @@ def read_level_from_file(input_dir, input_name, coords, block2repr, repr_type, d
                 for l in range(coords[2][0], coords[2][1]):
                     block = wrld.get_block((j, k, l))
                     b_name = block.get_state().name
-                    if repr_type == "block2vec" or repr_type == "bert":
+                    if repr_type == "block2vec" or repr_type == "bert" or repr_type == "bert_naive":
                         level[0, :, j - coords[0][0], k - coords[1][0], l - coords[2][0]] = block2repr[b_name]
                         if not props[uniques.index(b_name)]:
                             props[uniques.index(b_name)] = block.get_state().props
@@ -223,7 +223,7 @@ def read_level_from_file(input_dir, input_name, coords, block2repr, repr_type, d
                             props.append(block.get_state().props)
                         level[j - coords[0][0], k - coords[1][0], l - coords[2][0]] = uniques.index(b_name)
 
-    if repr_type == "block2vec" or repr_type == "bert":
+    if repr_type == "block2vec" or repr_type == "bert" or repr_type == "bert_naive":
         # For block2vec, directly use representation vectors
         oh_level = level
     else:
@@ -268,7 +268,7 @@ def save_oh_to_wrld_directly(input_dir, input_name, start_coords, oh_level, bloc
     # unused, therefore not adapted to neighbert
     if repr_type == "autoencoder":
         oh_level = block2repr["decoder"](oh_level).detach()
-    elif repr_type == "block2vec" or repr_type == "bert":
+    elif repr_type == "block2vec" or repr_type == "bert" or repr_type == "bert_naive":
         token_list = list(block2repr.keys())
     elif repr_type == "neighbert":
         if not token_list:
@@ -285,7 +285,7 @@ def save_oh_to_wrld_directly(input_dir, input_name, start_coords, oh_level, bloc
                     act_j = j-start_coords[0]
                     act_k = k-start_coords[1]
                     act_l = l-start_coords[2]
-                    if repr_type == "block2vec" or repr_type == "bert" or repr_type == "neighbert":
+                    if repr_type == "block2vec" or repr_type == "bert" or repr_type == "neighbert" or repr_type == "bert_naive":
                         dists = np.zeros((len(token_list),))
                         for i, rep in enumerate(token_list):
                             dists[i] = F.mse_loss(block2repr[rep], oh_level[0, :, act_j, act_k, act_l].detach().cpu()).detach()
