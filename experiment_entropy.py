@@ -2,14 +2,17 @@ import numpy as np
 import torch
 from scipy.stats import entropy
 from itertools import islice
+import os
 import pandas as pd
+from statistics import mean
+from tqdm import tqdm
 from config import Config
 from minecraft.level_utils import read_level as mc_read_level
 from minecraft.level_utils import one_hot_to_blockdata_level
 
 
 class GenerateEntropyConfig(Config):
-    # out_: str = None  # folder containing generator files
+    folder: str = None  # folder containing torch blockdata
     not_cuda: bool = False  # disables cuda
 
     def process_args(self):
@@ -92,18 +95,34 @@ if __name__ == '__main__':
         f"Entropy of the original sample: ({ent_real_0.mean():.3f}, {ent_real_1.mean():.3f}, {ent_real_2.mean():.3f})")
 
     # Fake
-    fake = torch.load("/home/awiszus/Project/World-GAN/wandb/test_ruins/random_samples/torch_blockdata/2_sc3.pt")
+    ent_0 = []
+    ent_1 = []
+    ent_2 = []
+    for filename in tqdm(os.listdir(opt.folder)):
+        if filename.endswith(".pt"):
+            fake = torch.load(os.path.join(opt.folder, filename))
 
-    t_fake_x = get_transition_matrix(fake, 0)
-    t_fake_y = get_transition_matrix(fake, 1)
-    t_fake_z = get_transition_matrix(fake, 2)
+            t_fake_x = get_transition_matrix(fake, 0)
+            t_fake_y = get_transition_matrix(fake, 1)
+            t_fake_z = get_transition_matrix(fake, 2)
 
-    ent_fake_0 = entropy(t_fake_x, base=None).mean()
-    ent_fake_1 = entropy(t_fake_y, base=None).mean()
-    ent_fake_2 = entropy(t_fake_z, base=None).mean()
+            ent_fake_0 = entropy(t_fake_x, base=None).mean()
+            ent_fake_1 = entropy(t_fake_y, base=None).mean()
+            ent_fake_2 = entropy(t_fake_z, base=None).mean()
 
-    print(f"Entropy of the fake sample: ({ent_fake_0.mean():.3f}, {ent_fake_1.mean():.3f}, {ent_fake_2.mean():.3f})")
+            ent_0.append(ent_fake_0)
+            ent_1.append(ent_fake_1)
+            ent_2.append(ent_fake_2)
 
+            #print(
+                # f"Entropy of the fake sample: ({ent_fake_0.mean():.3f}, {ent_fake_1.mean():.3f}, {ent_fake_2.mean():.3f})")
+
+        else:
+            continue
+
+    print(f"Overall fake Entropy: ({mean(ent_0):.3f}, {mean(ent_1):.3f}, {mean(ent_2):.3f})")
+
+    torch.save([mean(ent_0), mean(ent_1), mean(ent_2)], os.path.join(opt.folder, "../mean_entropy.pt"))
 
 
 

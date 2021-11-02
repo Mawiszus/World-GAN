@@ -9,7 +9,7 @@ from minecraft.block_grammar import get_sentence, get_neighbor_sentence
 
 
 if __name__ == '__main__':
-    use_neighbors = True
+    use_neighbors = False
     inflect = inflect.engine()
     model_str = 'bert-base-uncased'
     model = transformers.BertModel.from_pretrained(model_str)
