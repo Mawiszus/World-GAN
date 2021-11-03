@@ -53,6 +53,7 @@ class Config(Tap):
                              'U', 'X', 'g', 'k', 't']  # default list of 1-1
 
     repr_type: str = None  # Which representation type to use, currently [None, block2vec, autoencoder]
+    repr_dim: int = 8
 
     def __init__(self,
                  *args,
@@ -113,10 +114,10 @@ class Config(Tap):
             self.block2repr = load_pkl("representations",
                                         f"/home/schubert/projects/TOAD-GAN/input/minecraft/{self.input_area_name}/")
         elif self.repr_type == "bert":
-            self.block2repr = load_pkl("natural_representations_small",
+            self.block2repr = load_pkl(f"natural_representations_small_{self.repr_dim}",
                                         f"/home/schubert/projects/World-GAN/input/minecraft/{self.input_area_name}/")
         elif self.repr_type == "bert_naive":
-            self.block2repr = load_pkl("natural_representations_small_naive",
+            self.block2repr = load_pkl(f"natural_representations_small_{self.repr_dim}_naive",
                                         f"/home/schubert/projects/World-GAN/input/minecraft/{self.input_area_name}/")                            
         elif self.repr_type == "one-hot-neighbors":
             self.block2repr = None

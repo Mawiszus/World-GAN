@@ -23,6 +23,8 @@ sub_coord_dict = dict(
 
 if __name__ == '__main__':
     use_neighbors = False
+    use_naive = True
+    embedding_dim = 8
     inflect = inflect.engine()
     model_str = 'bert-base-uncased'
     model = transformers.BertModel.from_pretrained(model_str)
@@ -69,9 +71,7 @@ if __name__ == '__main__':
         clean_names: List[str] = []
         for token, token_vector in zip(token_list, token_list_vectors):
             clean_token = token.replace("minecraft:", "").replace(
-                "_", " ").replace("chest", "treasure chest")
-            if clean_token.replace("block", "") != clean_token:
-                clean_token = "patch of " + clean_token.replace(" block", "")
+                "_", " ")
             # apparently grass is counted as plural by inflect but it isn't so extra check
             if isinstance(inflect.singular_noun(clean_token), bool) or (clean_token.find("grass") >= 0):
                 is_plural = False
@@ -117,7 +117,7 @@ if __name__ == '__main__':
             t_list = token_list_str
 
         with torch.no_grad():
-            for token_name, token in zip(token_names, t_list):
+            for token_name, token in zip(token_names if not use_naive else clean_names, t_list):
                 ids = tokenizer.encode(token_name)
                 tokens = tokenizer.convert_ids_to_tokens(ids)
                 bert_output = model.forward(torch.tensor(
@@ -138,7 +138,6 @@ if __name__ == '__main__':
         import matplotlib.pyplot as plt
         from adjustText import adjust_text
 
-        embedding_dim = 32
         fig = plt.figure()
         embedding = pymde.preserve_distances(
             natural_tokens, embedding_dim=embedding_dim, verbose=True).embed()
@@ -156,7 +155,7 @@ if __name__ == '__main__':
             natural_token_dict_small[token_name] = e / torch.norm(e, p=2)
         if not use_neighbors:
             save_pkl(natural_token_dict_small,
-                     f"natural_representations_small_{embedding_dim}", prepath)
+                     f"natural_representations_small_{embedding_dim}{'_naive' if use_naive else ''}", prepath)
         else:
             save_pkl(natural_token_dict_small,
                      "natural_representations_small_neighbors", prepath)
