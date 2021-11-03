@@ -2,7 +2,7 @@ import math
 import os
 import pickle
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import numpy as np
 import pytorch_lightning as pl
@@ -21,7 +21,18 @@ from sklearn.metrics import ConfusionMatrixDisplay
 from tap import Tap
 from torch.utils.data import DataLoader
 from utils import load_pkl
-import umap
+import umap.umap_ as umap
+
+
+sub_coord_dict = dict(
+    ruins=[0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+    simple_beach=[0.0, 0.5, 0.0, 1.0, 0.0, 1.0],
+    desert=[0.25, 0.75, 0.0, 1.0, 0.25, 0.75],
+    plains=[0.25, 0.75, 0.0, 1.0, 0.25, 0.75],
+    swamp=[0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+    vanilla_village=[0.33333, 0.66667, 0.0, 1.0, 0.33333, 0.66667],
+    vanilla_mineshaft=[0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+)
 
 
 class Block2VecArgs(Tap):
@@ -40,13 +51,9 @@ class Block2VecArgs(Tap):
     epochs: int = 30
     batch_size: int = 256
     initial_lr: float = 1e-3
-    world_coords_name: str = "ruins"
-    input_world_coords: Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]] = (
-        (1028, 1076),
-        (60, 80),
-        (1088, 1127),
-    )
-    cutout_coords: bool = False
+    input_area_name: str = "ruins"
+    sub_coords: List[float] = [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]  # defines which coords of the full coord are are
+    cutout_coords: bool = True
     neighbor_radius: int = 1
 
     def process_args(self) -> None:
@@ -60,9 +67,29 @@ class Block2VecArgs(Tap):
                 "minecraft",
             ),
         )
-        self.input_world_coords = coords[self.world_coords_name]
+        self.sub_coords = sub_coord_dict[self.input_area_name]
+        self.coords = []
+        tmp_coords = coords[self.input_area_name]
+        sub_coords = [(self.sub_coords[0], self.sub_coords[1]),
+                      (self.sub_coords[2], self.sub_coords[3]),
+                      (self.sub_coords[4], self.sub_coords[5])]
+        for i, (start, end) in enumerate(sub_coords):
+            curr_len = tmp_coords[i][1] - tmp_coords[i][0]
+            if isinstance(start, float):
+                tmp_start = curr_len * start + tmp_coords[i][0]
+                tmp_end = curr_len * end + tmp_coords[i][0]
+            elif isinstance(start, int):
+                tmp_start = tmp_coords[i][0] + start
+                tmp_end = tmp_coords[i][0] + end
+            else:
+                AttributeError("Unexpected type for sub_coords")
+                tmp_start = tmp_coords[i][0]
+                tmp_end = tmp_coords[i][1]
+
+            self.coords.append((int(tmp_start), int(tmp_end)))
+        # self.input_world_coords = coords[self.input_area_name]
         self.output_path = os.path.join(
-            self.output_path, self.world_coords_name)
+            self.output_path, self.input_area_name)
         logger.info(self.output_path)
 
 
@@ -73,7 +100,7 @@ class Block2Vec(pl.LightningModule):
         self.save_hyperparameters()
         self.dataset = Block2VecDataset(
             self.args.input_world_path,
-            coords=self.args.input_world_coords,
+            coords=self.args.coords,
             cutout_coords=self.args.cutout_coords,
             neighbor_radius=self.args.neighbor_radius,
         )

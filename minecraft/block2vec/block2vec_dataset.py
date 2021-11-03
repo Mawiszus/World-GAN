@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 from itertools import product
-from typing import Tuple
+from typing import Tuple, List
 
 from loguru import logger
 import numpy as np
@@ -13,7 +13,7 @@ from torch.utils.data.dataset import Dataset
 
 class Block2VecDataset(Dataset):
 
-    def __init__(self, input_world_path: str, coords: Tuple[Tuple[int, int], Tuple[int, int], Tuple[int, int]], cutout_coords: bool,  neighbor_radius: int = 1):
+    def __init__(self, input_world_path: str, coords: List[Tuple[int, int]], cutout_coords: bool,  neighbor_radius: int = 1):
         """Block dataset with configurable neighborhood radius.
 
         Args:
