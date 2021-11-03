@@ -48,8 +48,9 @@ if __name__ == '__main__':
         if not use_neighbors:
             opt = Config().parse_args()
             opt.input_area_name = name
-            opt.input_name
             opt.sub_coords = sub_coord_dict[name]
+            opt.process_args()
+            print(opt)
             level = read_level(opt)
             token_list = opt.token_list
             # token_dict = load_pkl("representations", prepath)
