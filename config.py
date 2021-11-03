@@ -2,6 +2,7 @@
 import argparse
 import random
 from typing import List, Optional, Union
+from black import os
 
 import numpy as np
 import torch
@@ -18,10 +19,10 @@ class Config(Tap):
     netD: str = ""  # path to netD (to continue training)
     manualSeed: Optional[int] = None
     out: str = "output"  # output directory
-    input_dir: str = "input/mario"  # input directory
-    input_name: str = "lvl_1-1.txt"  # input level filename
+    input_dir: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "minecraft_worlds"))  # input directory
+    input_name: str = "Drehmal v2.1 PRIMORDIAL"  # input level filename
     # input level names (if multiple inputs are used)
-    input_names: List[str] = ["lvl_1-1.txt", "lvl_1-2.txt"]
+    input_names: List[str] = []
     # use mulitple inputs for training (use --input-names instead of --input-name)
     use_multiple_inputs: bool = False
 
@@ -38,8 +39,8 @@ class Config(Tap):
     scales: List[float] = [0.75, 0.5, 0.25]  # Scales descending (< 1 and > 0)
     noise_update: float = 0.1  # additive noise weight
     # use reflection padding? (makes edges random)
-    pad_with_noise: bool = False
-    niter: int = 4000  # number of epochs to train per scale
+    pad_with_noise: bool = True
+    niter: int = 3000  # number of epochs to train per scale
     gamma: float = 0.1  # scheduler gamma
     lr_g: float = 0.0005  # generator learning rate
     lr_d: float = 0.0005  # discriminator learning rate
@@ -58,7 +59,7 @@ class Config(Tap):
                  underscores_to_dashes: bool = False,
                  explicit_bool: bool = False,
                  **kwargs):
-        super().__init__(args, underscores_to_dashes, explicit_bool, kwargs)
+        super().__init__(*args, underscores_to_dashes, explicit_bool, **kwargs)
 
     def process_args(self):
         self.device = torch.device("cpu" if self.not_cuda else "cuda:0")
@@ -113,7 +114,7 @@ class Config(Tap):
                                         f"/home/schubert/projects/TOAD-GAN/input/minecraft/{self.input_area_name}/")
         elif self.repr_type == "bert":
             self.block2repr = load_pkl("natural_representations_small",
-                                        f"/home/awiszus/Project/World-GAN/input/minecraft/{self.input_area_name}/")
+                                        f"/home/schubert/projects/World-GAN/input/minecraft/{self.input_area_name}/")
         elif self.repr_type == "bert_naive":
             self.block2repr = load_pkl("natural_representations_small_naive",
                                         f"/home/schubert/projects/World-GAN/input/minecraft/{self.input_area_name}/")                            

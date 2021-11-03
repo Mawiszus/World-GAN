@@ -113,10 +113,6 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
     for p in G.parameters():
         grad_g.append(torch.zeros(p.shape).to(opt.device))
 
-    k_decay = 0.99
-    k_min = 0.75
-    k = 1.0
-
     for epoch in tqdm(range(opt.niter)):
         step = current_scale * opt.niter + epoch
         if opt.use_multiple_inputs:
@@ -239,7 +235,6 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                                f"gradient_penalty@{current_scale}": gradient_penalty.item(),
                                #    f"D_real_grad@{current_scale}": diff_d_real,
                                #    f"D_fake_grad@{current_scale}": diff_d_fake,
-                               "k": k
                                },
                               step=step, sync=False)
                 optimizerD.step()
@@ -260,12 +255,7 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                 fake = G(noise.detach(), prev.detach(), temperature=1)
                 output = D(fake)
 
-                top_k_output, _ = torch.topk(
-                    output.view(-1), k=int(k * torch.numel(output)))
-                if step % 60 == 0:
-                    k = max(k_decay * k, k_min)
-
-                errG = -top_k_output.mean()
+                errG = -output.mean()
                 errG.backward(retain_graph=False)
 
                 # grads_after = []
