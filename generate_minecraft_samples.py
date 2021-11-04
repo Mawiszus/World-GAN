@@ -11,6 +11,16 @@ from models import load_trained_pyramid
 from utils import load_pkl
 from edit_repr_space_experiment import adjust_token_list
 
+sub_coord_dict = dict(
+    ruins=[0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+    simple_beach=[0.0, 0.5, 0.0, 1.0, 0.0, 1.0],
+    desert=[0.25, 0.75, 0.0, 1.0, 0.25, 0.75],
+    plains=[0.25, 0.75, 0.0, 1.0, 0.25, 0.75],
+    swamp=[0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+    vanilla_village=[0.33333, 0.66667, 0.0, 1.0, 0.33333, 0.66667],
+    vanilla_mineshaft=[0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+)
+
 
 class GenerateMCSamplesConfig(Config):
     out_: str = None  # folder containing generator files
@@ -32,6 +42,8 @@ class GenerateMCSamplesConfig(Config):
 if __name__ == '__main__':
     # config
     opt = GenerateMCSamplesConfig().parse_args()
+    opt.sub_coords = sub_coord_dict[opt.input_area_name]
+    opt.process_args()
 
     opt.game = 'minecraft'
     opt.ImgGen = None

@@ -112,7 +112,7 @@ class Config(Tap):
             # self.block2repr = load_pkl('prim_cutout_representations_ruins',
             #                            prepath='/home/awiszus/Project/TOAD-GAN/input/minecraft/')
             self.block2repr = load_pkl("representations",
-                                        f"/home/schubert/projects/TOAD-GAN/input/minecraft/{self.input_area_name}/")
+                                        f"/home/awiszus/Project/World-GAN/input/minecraft/{self.input_area_name}/")
         elif self.repr_type == "bert":
             self.block2repr = load_pkl(f"natural_representations_small_{self.repr_dim}",
                                         f"/home/schubert/projects/World-GAN/input/minecraft/{self.input_area_name}/")
