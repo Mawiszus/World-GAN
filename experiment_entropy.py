@@ -4,7 +4,7 @@ from scipy.stats import entropy
 from itertools import islice
 import os
 import pandas as pd
-from statistics import mean
+from statistics import mean, variance
 from tqdm import tqdm
 from config import Config
 from minecraft.level_utils import read_level as mc_read_level
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     ent_real_2 = entropy(t_mat_z, base=None).mean()
 
     print(
-        f"Entropy of the original sample: ({ent_real_0.mean():.3f}, {ent_real_1.mean():.3f}, {ent_real_2.mean():.3f})")
+        f"Entropy of the original sample: ({ent_real_0:.3f}, {ent_real_1:.3f}, {ent_real_2:.3f})")
 
     # Fake
     ent_0 = []
@@ -120,9 +120,11 @@ if __name__ == '__main__':
         else:
             continue
 
-    print(f"Overall fake Entropy: ({mean(ent_0):.3f}, {mean(ent_1):.3f}, {mean(ent_2):.3f})")
+    print(f"Overall fake Entropy mean: ({mean(ent_0):.3f}, {mean(ent_1):.3f}, {mean(ent_2):.3f})")
+    print(f"Overall fake Entropy vari: ({variance(ent_0):.3f}, {variance(ent_1):.3f}, {variance(ent_2):.3f})")
 
     torch.save([mean(ent_0), mean(ent_1), mean(ent_2)], os.path.join(opt.folder, "../mean_entropy.pt"))
+    torch.save([variance(ent_0), variance(ent_1), variance(ent_2)], os.path.join(opt.folder, "../var_entropy.pt"))
 
 
 
