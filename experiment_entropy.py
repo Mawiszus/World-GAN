@@ -9,6 +9,7 @@ from tqdm import tqdm
 from config import Config
 from minecraft.level_utils import read_level as mc_read_level
 from minecraft.level_utils import one_hot_to_blockdata_level
+from generate_minecraft_samples import sub_coord_dict
 
 
 class GenerateEntropyConfig(Config):
@@ -72,6 +73,8 @@ def get_transition_matrix(sample, dim=0):
 if __name__ == '__main__':
     # config
     opt = GenerateEntropyConfig().parse_args()
+    opt.sub_coords = sub_coord_dict[opt.input_area_name]
+    opt.process_args()
 
     opt.game = 'minecraft'
     opt.ImgGen = None
@@ -93,6 +96,8 @@ if __name__ == '__main__':
 
     print(
         f"Entropy of the original sample: ({ent_real_0:.3f}, {ent_real_1:.3f}, {ent_real_2:.3f})")
+
+    torch.save([ent_real_0, ent_real_1, ent_real_2], os.path.join(opt.folder, "../real_entropy.pt"))
 
     # Fake
     ent_0 = []
