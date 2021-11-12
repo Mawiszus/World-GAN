@@ -22,6 +22,7 @@ class QuantitativeExperimentArgs(Tap):
     run_dir: str
     output_dir: str
     metrics: List[str] = ["levenshtein", "tpkldiv"]
+    # metrics: List[str] = ["tpkldiv"]
     tpkldiv_pattern_sizes: List[int] = [5, 10]
     tpkldiv_weight: float = 0.5
 
@@ -96,8 +97,10 @@ def load_level(path: Union[str, Path]) -> np.ndarray:
 def load_levels(run_dir: str):
     samples_path = Path(run_dir).joinpath("random_samples")
     real = load_level(samples_path.joinpath("real_bdata.pt"))
-    generated = [load_level(str(path)) for path in
+    generated_all = [load_level(str(path)) for path in
                  samples_path.joinpath("torch_blockdata").glob("*.pt")]
+    generated = generated_all[:20]
+    # generated = generated_all
     logger.info("Found {} levels in {}", len(generated), run_dir)
     return real, generated
 

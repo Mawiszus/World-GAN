@@ -103,6 +103,7 @@ if __name__ == '__main__':
     ent_0 = []
     ent_1 = []
     ent_2 = []
+    count = 0
     for filename in tqdm(os.listdir(opt.folder)):
         if filename.endswith(".pt"):
             fake = torch.load(os.path.join(opt.folder, filename))
@@ -118,10 +119,12 @@ if __name__ == '__main__':
             ent_0.append(ent_fake_0)
             ent_1.append(ent_fake_1)
             ent_2.append(ent_fake_2)
+            count += 1
 
             #print(
                 # f"Entropy of the fake sample: ({ent_fake_0.mean():.3f}, {ent_fake_1.mean():.3f}, {ent_fake_2.mean():.3f})")
-
+            if count >= 20:
+                break
         else:
             continue
 

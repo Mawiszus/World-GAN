@@ -16,29 +16,34 @@ if __name__ == '__main__':
 
     df = pd.DataFrame()
     for d in os.listdir(cfg.top_folder):
-        curr_files = os.path.join(cfg.top_folder, d, "files")
-        with open(os.path.join(curr_files, "wandb-metadata.json")) as jsonfile:
-            metadata = json.load(jsonfile)
-        name = metadata["args"][-8].replace("_", " ")
-        try:
-            with open(os.path.join(curr_files, "random_samples", "results.json")) as jsonfile:
-                results = json.load(jsonfile)
-                reshape_results = {"TPKL-Div 5 mean":results["tpkldiv"]["mean"]["5"],
-                                   "TPKL-Div 5 var":results["tpkldiv"]["var"]["5"],
-                                   "TPKL-Div 10 mean":results["tpkldiv"]["mean"]["10"],
-                                   "TPKL-Div 10 var":results["tpkldiv"]["var"]["10"],
-                                   "Levenshtein mean":results["levenshtein"]["mean"],
-                                   "Levenshtein var":results["levenshtein"]["var"]}
-        except Exception:
-            print(f"No results for {d}")
-            reshape_results = {}
-        try:
-            result_entropy = torch_load(os.path.join(curr_files, "random_samples", "mean_entropy.pt"))
-            reshape_results["entropy mean"] = sum(result_entropy)/len(result_entropy)
-        except Exception:
-            print(f"No entropy for {d}")
+        if os.path.isdir(os.path.join(cfg.top_folder, d)):
+            curr_files = os.path.join(cfg.top_folder, d, "files")
+            try:
+                with open(os.path.join(curr_files, "wandb-metadata.json")) as jsonfile:
+                    metadata = json.load(jsonfile)
+            except Exception:
+                print(f"No metadata for {d}")
+                continue
+            name = metadata["args"][-8].replace("_", " ")
+            try:
+                with open(os.path.join(curr_files, "random_samples", "results.json")) as jsonfile:
+                    results = json.load(jsonfile)
+                    reshape_results = {"TPKL-Div 5 mean":results["tpkldiv"]["mean"]["5"],
+                                       "TPKL-Div 5 var":results["tpkldiv"]["var"]["5"],
+                                       "TPKL-Div 10 mean":results["tpkldiv"]["mean"]["10"],
+                                       "TPKL-Div 10 var":results["tpkldiv"]["var"]["10"],
+                                       "Levenshtein mean":results["levenshtein"]["mean"],
+                                       "Levenshtein var":results["levenshtein"]["var"]}
+            except Exception:
+                print(f"No results for {d}")
+                reshape_results = {}
+            try:
+                result_entropy = torch_load(os.path.join(curr_files, "random_samples", "mean_entropy.pt"))
+                reshape_results["entropy mean"] = sum(result_entropy)/len(result_entropy)
+            except Exception:
+                print(f"No entropy for {d}")
 
-        df = pd.concat([df, pd.DataFrame(reshape_results, index=[name])])
+            df = pd.concat([df, pd.DataFrame(reshape_results, index=[name])])
 
     df = df.sort_index()
     print(df.to_latex(float_format=lambda x: '%10.2f' % x))
