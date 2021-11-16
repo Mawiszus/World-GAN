@@ -23,8 +23,8 @@ sub_coord_dict = dict(
 
 if __name__ == '__main__':
     use_neighbors = False
-    use_naive = True
-    embedding_dim = 8
+    use_naive = False
+    embedding_dim = 32
     inflect = inflect.engine()
     model_str = 'bert-base-uncased'
     model = transformers.BertModel.from_pretrained(model_str)
@@ -42,8 +42,8 @@ if __name__ == '__main__':
     # world_names_and_pl = [("village", False)]
 
     for n, name in enumerate(names):
-        # prepath = f"/home/awiszus/Project/World-GAN/input/minecraft/{name}/"
-        prepath = f"/home/schubert/projects/World-GAN/input/minecraft/{name}/"
+        prepath = f"/home/awiszus/Project/World-GAN/input/minecraft/{name}/"
+        # prepath = f"/home/schubert/projects/World-GAN/input/minecraft/{name}/"
         print(name)
         if not use_neighbors:
             opt = Config().parse_args()
@@ -127,7 +127,7 @@ if __name__ == '__main__':
                 natural_token_dict[token] = final_layer_embeddings[0]
 
         if not use_neighbors:
-            save_pkl(natural_token_dict, "natural_representations", prepath)
+            save_pkl(natural_token_dict, f"natural_representations{'_naive' if use_naive else ''}", prepath)
         else:
             save_pkl(natural_token_dict,
                      "natural_representations_neighbors", prepath)
@@ -151,10 +151,14 @@ if __name__ == '__main__':
         plt.savefig(os.path.join(prepath, "mde-plot.png"))
 
         # %%
+        natural_token_dict_small_no_norm = {}
         natural_token_dict_small = {}
         for token_name, e in zip(t_list, embedding):
+            natural_token_dict_small_no_norm[token_name] = e
             natural_token_dict_small[token_name] = e / torch.norm(e, p=2)
         if not use_neighbors:
+            save_pkl(natural_token_dict_small_no_norm,
+                     f"natural_representations_small_no_norm_{embedding_dim}{'_naive' if use_naive else ''}", prepath)
             save_pkl(natural_token_dict_small,
                      f"natural_representations_small_{embedding_dim}{'_naive' if use_naive else ''}", prepath)
         else:
