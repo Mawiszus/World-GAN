@@ -106,7 +106,7 @@ if __name__ == '__main__':
     count = 0
     for filename in tqdm(os.listdir(opt.folder)):
         if filename.endswith(".pt"):
-            fake = torch.load(os.path.join(opt.folder, filename))
+            fake = torch.load(os.path.join(opt.folder, filename)).numpy()
 
             t_fake_x = get_transition_matrix(fake, 0)
             t_fake_y = get_transition_matrix(fake, 1)
