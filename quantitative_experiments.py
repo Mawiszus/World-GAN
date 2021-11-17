@@ -19,7 +19,7 @@ from main_tile_pattern import compute_prob, pattern_key
 
 
 class QuantitativeExperimentArgs(Tap):
-    run_dir: str
+    run_dir: str 
     output_dir: str
     metrics: List[str] = ["levenshtein", "tpkldiv"]
     # metrics: List[str] = ["tpkldiv"]
@@ -32,7 +32,8 @@ class QuantitativeExperimentArgs(Tap):
 
 
 def compute_levenshtein(real: np.ndarray, generated: List[torch.Tensor]):
-    generated_str = ["".join(gen.numpy().flatten().astype(str)) for gen in generated]
+    generated_str = ["".join(gen.numpy().flatten().astype(str))
+                     for gen in generated]
     distances = [levenshtein_distance(gen_str_1, gen_str_2)
                  for gen_str_1, gen_str_2 in product(generated_str, generated_str)]
     return np.mean(distances), np.var(distances)
@@ -42,22 +43,28 @@ def compute_tpkldiv(real: np.ndarray, generated: List[np.ndarray], pattern_sizes
     dists = defaultdict(list)
     for pattern_size in pattern_sizes:
         logger.info("Computing TP KL-Div for patterns of size {}", pattern_size)
-        real_pattern_counts = compute_pattern_counts([real], pattern_size)
-        generated_pattern_counts = compute_pattern_counts(
+        real_pattern_counts = compute_pattern_counts([real], pattern_size)[0]
+        generated_pattern_counts_per_level = compute_pattern_counts(
             generated, pattern_size)
         num_patterns = sum(real_pattern_counts.values())
-        num_test_patterns = sum(generated_pattern_counts.values())
-        logger.info(
-            "Found {} patterns and {} test patterns", num_patterns, num_test_patterns
-        )
-
-        for pattern, count in tqdm(generated_pattern_counts.items()):
-            prob_p = compute_prob(count, num_patterns)
-            prob_q = compute_prob(
-                generated_pattern_counts[pattern], num_test_patterns)
-            kl_divergence = weight * prob_p * math.log(prob_p / prob_q) + (
-                1 - weight
-            ) * prob_q * math.log(prob_q / prob_p)
+        for generated_pattern_counts in tqdm(generated_pattern_counts_per_level):
+            num_test_patterns = sum(generated_pattern_counts.values())
+            kl_divergence_pq = 0
+            for pattern in real_pattern_counts.keys():
+                prob_p = compute_prob(
+                    real_pattern_counts[pattern], num_patterns)
+                prob_q = compute_prob(
+                    generated_pattern_counts[pattern], num_test_patterns)
+                kl_divergence_pq += prob_p * math.log(prob_p / prob_q)
+            kl_divergence_qp = 0
+            for pattern in generated_pattern_counts.keys():
+                prob_q = compute_prob(
+                    real_pattern_counts[pattern], num_patterns)
+                prob_p = compute_prob(
+                    generated_pattern_counts[pattern], num_test_patterns)
+                kl_divergence_qp += prob_p * math.log(prob_p / prob_q)
+            kl_divergence = weight * kl_divergence_qp + \
+                (1 - weight) * kl_divergence_pq
             dists[pattern_size].append(kl_divergence)
     mean_tpkldiv: Dict[int, float] = {k: np.mean(v) for k, v in dists.items()}
     var_tpkldiv: Dict[int, float] = {k: np.var(v) for k, v in dists.items()}
@@ -82,11 +89,7 @@ def compute_pattern_counts(levels: List[np.ndarray], pattern_size: int):
         counts_per_level = pool.map(
             partial(get_pattern_counts, pattern_size=pattern_size), levels,
         )
-    pattern_counts = defaultdict(int)
-    for counts in counts_per_level:
-        for pattern, count in counts.items():
-            pattern_counts[pattern] += count
-    return pattern_counts
+    return counts_per_level
 
 
 def load_level(path: Union[str, Path]) -> np.ndarray:
@@ -97,9 +100,9 @@ def load_levels(run_dir: str):
     samples_path = Path(run_dir).joinpath("random_samples")
     real = load_level(samples_path.joinpath("real_bdata.pt"))
     generated_all = [load_level(str(path)) for path in
-                 samples_path.joinpath("torch_blockdata").glob("*.pt")]
-    generated = generated_all[:20]
-    # generated = generated_all
+                     samples_path.joinpath("torch_blockdata").glob("*.pt")]
+    # generated = generated_all[:2]
+    generated = generated_all
     logger.info("Found {} levels in {}", len(generated), run_dir)
     return real, generated
 
