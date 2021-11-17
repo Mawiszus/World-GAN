@@ -51,12 +51,11 @@ def compute_tpkldiv(real: np.ndarray, generated: List[np.ndarray], pattern_sizes
             "Found {} patterns and {} test patterns", num_patterns, num_test_patterns
         )
 
-        kl_divergence = 0
         for pattern, count in tqdm(generated_pattern_counts.items()):
             prob_p = compute_prob(count, num_patterns)
             prob_q = compute_prob(
                 generated_pattern_counts[pattern], num_test_patterns)
-            kl_divergence += weight * prob_p * math.log(prob_p / prob_q) + (
+            kl_divergence = weight * prob_p * math.log(prob_p / prob_q) + (
                 1 - weight
             ) * prob_q * math.log(prob_q / prob_p)
             dists[pattern_size].append(kl_divergence)
