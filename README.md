@@ -22,6 +22,11 @@ The project was built for research purposes only.**
 
 Our paper "World-GAN: a Generative Model for Minecraft Worlds" was accepted at [CoG 2021](https://ieee-cog.org/2021/index.html)!
 
+### Transaction on Games 2022
+
+An extended Version of this paper has been published on the IEEE [Transactions on Games](https://ieeexplore.ieee.org/abstract/document/9720203).
+The additional code made for that publication can be found in the **bert-extended** branch. If you have questions regarding that, please do not hesitate to contact us!
+
 
 ## Getting Started
 
