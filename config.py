@@ -51,6 +51,7 @@ class Config(Tap):
     alpha: int = 100  # reconstruction loss weight
     token_list: List[str] = ['!', '#', '-', '1', '@', 'C', 'S',
                              'U', 'X', 'g', 'k', 't']  # default list of 1-1
+    render: bool = False  # if the training examples should be rendered for logging purposes
 
     repr_type: str = None  # Which representation type to use, currently [None, block2vec, autoencoder]
     repr_dim: int = 8
