@@ -56,11 +56,15 @@ class Config(Tap):
     repr_type: str = None  # Which representation type to use, currently [None, block2vec, autoencoder]
     repr_dim: int = 8
 
-    def __init__(self,
-                 *args,
-                 underscores_to_dashes: bool = False,
-                 explicit_bool: bool = False,
-                 **kwargs):
+    # config for mcpi raspberryjuice wrapping
+    server_train: bool = False  # set to true if you want to train live on a server running RaspberryJuice!
+    server_start_pos: List[int] = [0, 0, 0]  # start coordinates for sample (0,0,0 is spawn, not true!)
+    server_end_pos: List[int] = [10, 10, 10]  # end coordinates for sample (0,0,0 is spawn, not true!)
+    # server_render_tmp: bool = True  # set to true if you want to see a temporary sample rendered at server_render_pos
+    server_render_pos: List[int] = [20, 0, 0]  # position at which results are shown (make sure to not overlap this with your actual target area!)
+    server_get_block_data: bool = True  # if False, will try to use getBlocks() which does not seem to work correctly yet
+
+    def __init__(self, *args, underscores_to_dashes: bool = False, explicit_bool: bool = False, **kwargs):
         super().__init__(*args, underscores_to_dashes, explicit_bool, **kwargs)
 
     def process_args(self):
@@ -86,26 +90,37 @@ class Config(Tap):
         # which scale to stop on - usually always last scale defined
         self.stop_scale = self.num_scales + 1
 
-        coord_dict = load_pkl('primordial_coords_dict', 'input/minecraft/')
-        tmp_coords = coord_dict[self.input_area_name]
-        sub_coords = [(self.sub_coords[0], self.sub_coords[1]),
-                      (self.sub_coords[2], self.sub_coords[3]),
-                      (self.sub_coords[4], self.sub_coords[5])]
-        self.coords = []
-        for i, (start, end) in enumerate(sub_coords):
-            curr_len = tmp_coords[i][1] - tmp_coords[i][0]
-            if isinstance(start, float):
-                tmp_start = curr_len * start + tmp_coords[i][0]
-                tmp_end = curr_len * end + tmp_coords[i][0]
-            elif isinstance(start, int):
-                tmp_start = tmp_coords[i][0] + start
-                tmp_end = tmp_coords[i][0] + end
-            else:
-                AttributeError("Unexpected type for sub_coords")
-                tmp_start = tmp_coords[i][0]
-                tmp_end = tmp_coords[i][1]
+        if not self.server_train:
+            coord_dict = load_pkl('primordial_coords_dict', 'input/minecraft/')
+            tmp_coords = coord_dict[self.input_area_name]
+            sub_coords = [(self.sub_coords[0], self.sub_coords[1]),
+                          (self.sub_coords[2], self.sub_coords[3]),
+                          (self.sub_coords[4], self.sub_coords[5])]
+            self.coords = []
+            for i, (start, end) in enumerate(sub_coords):
+                curr_len = tmp_coords[i][1] - tmp_coords[i][0]
+                if isinstance(start, float):
+                    tmp_start = curr_len * start + tmp_coords[i][0]
+                    tmp_end = curr_len * end + tmp_coords[i][0]
+                elif isinstance(start, int):
+                    tmp_start = tmp_coords[i][0] + start
+                    tmp_end = tmp_coords[i][0] + end
+                else:
+                    AttributeError("Unexpected type for sub_coords")
+                    tmp_start = tmp_coords[i][0]
+                    tmp_end = tmp_coords[i][1]
 
-            self.coords.append((int(tmp_start), int(tmp_end)))
+                self.coords.append((int(tmp_start), int(tmp_end)))
+        else:
+            self.coords = []
+            for i in range(len(self.server_start_pos)):
+                if self.server_start_pos[i] < self.server_end_pos[i]:
+                    self.coords.append((self.server_start_pos[i], self.server_end_pos[i]))
+                else:
+                    self.coords.append((self.server_end_pos[i], self.server_start_pos[i]))
+
+            if self.repr_type:
+                raise NotImplementedError("Server generation is not implemented with block2vec or bert yet.")
 
         if not self.repr_type:
             self.block2repr = None

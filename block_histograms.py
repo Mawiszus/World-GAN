@@ -21,8 +21,8 @@ def make_block_histogram(folder, logscale):
     token_names = torch.load(os.path.join(folder, '../../token_list.pth'))
     pruned_names = []
     for name in token_names:
-        sp_name = name.split(':')
-        pruned_names.append(sp_name[1])
+        sp_name = str(name).split(':')
+        pruned_names.append(sp_name[-1])
 
     t0 = torch.load(os.path.join(folder, '../real_bdata.pt'))
 

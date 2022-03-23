@@ -77,26 +77,29 @@ def train(real, opt: Config):
     # Log the original input level(s) as an image
     if opt.use_multiple_inputs:
         # Multi Input is not tested for Minecraft
-        for i, level in enumerate(real):
+        raise NotImplementedError("Multi Input is not implemented for minecraft.")
+        # for i, level in enumerate(real):
+        #     try:
+        #         subprocess.call(["wine", '--version'])
+        #         obj_pth = os.path.join(opt.out_, "objects/real")
+        #         os.makedirs(obj_pth, exist_ok=True)
+        #         real_obj_pth = render_minecraft(opt.input_names[i], opt.coords, obj_pth, "real")
+        #         wandb.log({"real": wandb.Object3D(open(real_obj_pth))}, commit=False)
+        #     except OSError:
+        #         pass
+    else:
+        # Default: One image
+        if not opt.server_train:
+            # Mineways does not work with the server block representation, so we just skip this if we're on the server
             try:
+                # Check if wine is installed (Linux), then render
                 subprocess.call(["wine", '--version'])
                 obj_pth = os.path.join(opt.out_, "objects/real")
                 os.makedirs(obj_pth, exist_ok=True)
-                real_obj_pth = render_minecraft(opt.input_names[i], opt.coords, obj_pth, "real")
+                real_obj_pth = render_minecraft(opt.input_name, opt.coords, obj_pth, "real")
                 wandb.log({"real": wandb.Object3D(open(real_obj_pth))}, commit=False)
             except OSError:
                 pass
-    else:
-        # Default: One image
-        try:
-            # Check if wine is installed (Linux), then render
-            subprocess.call(["wine", '--version'])
-            obj_pth = os.path.join(opt.out_, "objects/real")
-            os.makedirs(obj_pth, exist_ok=True)
-            real_obj_pth = render_minecraft(opt.input_name, opt.coords, obj_pth, "real")
-            wandb.log({"real": wandb.Object3D(open(real_obj_pth))}, commit=False)
-        except OSError:
-            pass
         os.makedirs("%s/state_dicts" % (opt.out_), exist_ok=True)
 
     # Training Loop
@@ -113,7 +116,7 @@ def train(real, opt: Config):
         if current_scale < (stop_scale-1):
             use_softmax = False  # if true, always softmax
         else:
-            use_softmax = False  # if both false, never softmax (useful if repr are used) TODO: Make this an option
+            use_softmax = True  # if both false, never softmax (useful if repr are used) TODO: Make this an option
 
         # Initialize models
         D, G = init_models(opt, use_softmax)

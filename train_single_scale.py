@@ -33,7 +33,8 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
     the amplitudes for the noise in all the scales. opt is a namespace that holds all necessary parameters. """
     current_scale = len(generators)
 
-    clear_empty_world(opt.output_dir, 'Curr_Empty_World')  # reset tmp world
+    if not opt.server_train:
+        clear_empty_world(opt.output_dir, 'Curr_Empty_World')  # reset tmp world
 
     if opt.use_multiple_inputs:
         real_group = []
@@ -296,35 +297,50 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
             to_level = one_hot_to_blockdata_level
 
             if opt.render:
-                try:
-                    subprocess.call(["wine", '--version'])
-                    real_scaled = to_level(
-                        real.detach(), token_list, opt.block2repr, opt.repr_type)
+                if not opt.server_train:
+                    try:
+                        subprocess.call(["wine", '--version'])
+                        real_scaled = to_level(
+                            real.detach(), token_list, opt.block2repr, opt.repr_type)
 
-                    # Minecraft World
-                    worldname = 'Curr_Empty_World'
-                    clear_empty_world(opt.output_dir, worldname)  # reset tmp world
-                    to_render = [real_scaled, to_level(fake.detach(), token_list, opt.block2repr, opt.repr_type),
-                                 to_level(G(Z_opt.detach(), z_prev), token_list, opt.block2repr, opt.repr_type)]
-                    render_names = [
-                        f"real@{current_scale}", f"G(z)@{current_scale}", f"G(z_opt)@{current_scale}"]
-                    obj_pth = os.path.join(opt.out_, f"objects/{current_scale}")
-                    os.makedirs(obj_pth, exist_ok=True)
-                    if opt.repr_type == "neighbert" or opt.repr_type == "one-hot-neighbors":
-                        token_list = opt.token_list_translation
-                    for n, level in enumerate(to_render):
-                        pos = n * (level.shape[0] + 5)
-                        save_level_to_world(
-                            opt.output_dir, worldname, (pos, 0, 0), level, token_list, opt.props)
-                        curr_coords = [[pos, pos + real_scaled.shape[0]],
-                                       [0, real_scaled.shape[1]],
-                                       [0, real_scaled.shape[2]]]
-                        render_pth = render_minecraft(
-                            worldname, curr_coords, obj_pth, render_names[n])
-                        rendered_images = render_world(render_pth, opt)
-                        wandb.log({render_names[n]: wandb.Image(rendered_images)}, commit=False)
-                except OSError:
-                    pass
+                        # Minecraft World
+                        worldname = 'Curr_Empty_World'
+                        clear_empty_world(opt.output_dir, worldname)  # reset tmp world
+                        to_render = [real_scaled, to_level(fake.detach(), token_list, opt.block2repr, opt.repr_type),
+                                     to_level(G(Z_opt.detach(), z_prev), token_list, opt.block2repr, opt.repr_type)]
+                        render_names = [
+                            f"real@{current_scale}", f"G(z)@{current_scale}", f"G(z_opt)@{current_scale}"]
+                        obj_pth = os.path.join(opt.out_, f"objects/{current_scale}")
+                        os.makedirs(obj_pth, exist_ok=True)
+                        if opt.repr_type == "neighbert" or opt.repr_type == "one-hot-neighbors":
+                            token_list = opt.token_list_translation
+                        for n, level in enumerate(to_render):
+                            pos = n * (level.shape[0] + 5)
+                            save_level_to_world(
+                                opt.output_dir, worldname, (pos, 0, 0), level, token_list, opt.props)
+                            curr_coords = [[pos, pos + real_scaled.shape[0]],
+                                           [0, real_scaled.shape[1]],
+                                           [0, real_scaled.shape[2]]]
+                            render_pth = render_minecraft(
+                                worldname, curr_coords, obj_pth, render_names[n])
+                            rendered_images = render_world(render_pth, opt)
+                            wandb.log({render_names[n]: wandb.Image(rendered_images)}, commit=False)
+                    except OSError:
+                        pass
+                else:
+                    # We're posting this directly on the server!
+                    opt.mc_server.postToChat("Rendering sample...")
+
+                    curr_sample = to_level(fake.detach(), token_list, opt.block2repr, opt.repr_type)
+                    for i in range(curr_sample.shape[0]):
+                        for j in range(curr_sample.shape[1]):
+                            for k in range(curr_sample.shape[2]):
+                                opt.mc_server.setBlock(opt.server_render_pos[0] + i,
+                                                       opt.server_render_pos[1] + j,
+                                                       opt.server_render_pos[2] + k,
+                                                       token_list[curr_sample[i, j, k].item()])
+
+                    opt.mc_server.postToChat("Sample Rendered!")
 
             # Learning Rate scheduler step
             schedulerD.step()

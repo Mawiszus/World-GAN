@@ -10,6 +10,7 @@ from minecraft.level_utils import read_level as mc_read_level
 from models import load_trained_pyramid
 from utils import load_pkl
 from edit_repr_space_experiment import adjust_token_list
+import mcpi.minecraft as mc
 
 sub_coord_dict = dict(
     ruins=[0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
@@ -48,7 +49,13 @@ if __name__ == '__main__':
     opt.game = 'minecraft'
     opt.ImgGen = None
     replace_tokens = None
-    clear_empty_world(opt.output_dir, opt.output_name)
+
+    if not opt.server_train:
+        clear_empty_world(opt.output_dir, opt.output_name)
+    else:
+        # connect to the minecraft server running RaspberryJuice
+        opt.mc_server = mc.Minecraft.create()  # assumes default parameters on the server!
+
     downsample = special_minecraft_downsampling
 
     # Load Real

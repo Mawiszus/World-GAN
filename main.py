@@ -11,6 +11,7 @@ import wandb
 import sys
 import os
 import torch
+import mcpi.minecraft as mc
 
 
 def get_tags(opt):
@@ -46,11 +47,15 @@ def main():
     opt.ImgGen = None
 
     # Check if wine is available to use (Linux) and clear the MC world examples will be saved to
-    try:
-        subprocess.call(["wine", "--version"])
-        clear_empty_world(opt.output_dir, opt.output_name)
-    except OSError:
-        pass
+    if not opt.server_train:
+        try:
+            subprocess.call(["wine", "--version"])
+            clear_empty_world(opt.output_dir, opt.output_name)
+        except OSError:
+            pass
+    else:
+        # connect to the minecraft server running RaspberryJuice
+        opt.mc_server = mc.Minecraft.create()  # assumes default parameters on the server!
 
     # Read level according to input arguments
     real = mc_read_level(opt)

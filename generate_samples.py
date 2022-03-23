@@ -14,6 +14,7 @@ from torch.nn.functional import interpolate
 from tqdm import tqdm
 from loguru import logger
 import matplotlib.pyplot as plt
+import mcpi.minecraft as mc
 
 # sys.path.append(os.path.join(os.path.abspath(os.path.dirname(__file__)), ".."))  # uncomment if opening form other dir
 
@@ -64,6 +65,10 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
 
     # Minecraft has 3 dims
     dim = 3
+
+    if opt.server_train:
+        # Only one sample to put in the server (Maybe extend in future?)
+        num_samples = 1
 
     # Main sampling loop
     for sc, (G, Z_opt, noise_amp) in enumerate(zip(generators, noise_maps, noise_amplitudes)):
@@ -198,15 +203,16 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
                     real_level = to_level(reals[current_scale], token_list, opt.block2repr, opt.repr_type)
                     torch.save(real_level, "%s/real_bdata.pt" % dir2save)
                     torch.save(token_list, "%s/token_list.pt" % dir2save)
-                    if render_images:
-                        real_pth = "%s/reals" % dir2save
-                        os.makedirs(real_pth, exist_ok=True)
-                        save_level_to_world(opt.output_dir, opt.output_name, (0, 0, 0), real_level,
-                                            render_token_list, props)
-                        curr_coords = [[0, real_level.shape[0]],
-                                       [0, real_level.shape[1]],
-                                       [0, real_level.shape[2]]]
-                        render_minecraft(opt.output_name, curr_coords, real_pth, "%d_real" % current_scale)
+                    if not opt.server_train:
+                        if render_images:
+                            real_pth = "%s/reals" % dir2save
+                            os.makedirs(real_pth, exist_ok=True)
+                            save_level_to_world(opt.output_dir, opt.output_name, (0, 0, 0), real_level,
+                                                render_token_list, props)
+                            curr_coords = [[0, real_level.shape[0]],
+                                           [0, real_level.shape[1]],
+                                           [0, real_level.shape[2]]]
+                            render_minecraft(opt.output_name, curr_coords, real_pth, "%d_real" % current_scale)
 
                 level = to_level(I_curr.detach(), token_list, opt.block2repr, opt.repr_type)
                 torch.save(level, "%s/torch_blockdata/%d_sc%d.pt" % (dir2save, n, current_scale))
@@ -214,26 +220,41 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
                 # new_schem = NanoMCSchematic(save_path, level.shape[:3])
                 # new_schem.set_blockdata(level)
                 # new_schem.saveToFile()
-                if render_images:
-                    obj_pth = "%s/objects/%d" % (dir2save, current_scale)
-                    os.makedirs(obj_pth, exist_ok=True)
-                    try:
-                        subprocess.call(["wine", '--version'])
-                        # Minecraft World
-                        len_n = math.ceil(math.sqrt(num_samples))  # we arrange our samples in a square in the world
-                        x, z = np.unravel_index(n, [len_n, len_n])  # get x, z pos according to index n
-                        posx = x * (level.shape[0] + 5)
-                        posz = z * (level.shape[2] + 5)
-                        save_level_to_world(opt.output_dir, opt.output_name, (posx, 0, posz), level,
-                                            render_token_list, props)
-                        # save_oh_to_wrld_directly(opt.output_dir, opt.output_name, (posx, 0, posz), I_curr.detach(),
-                        #                          opt.block2repr, opt.repr_type)
-                        curr_coords = [[posx, posx + level.shape[0]],
-                                        [0, level.shape[1]],
-                                        [posz, posz + level.shape[2]]]
-                        render_minecraft(opt.output_name, curr_coords, obj_pth, "%d" % n)
-                    except OSError:
-                        pass
+                if not opt.server_train:
+                    if render_images:
+                        obj_pth = "%s/objects/%d" % (dir2save, current_scale)
+                        os.makedirs(obj_pth, exist_ok=True)
+                        try:
+                            subprocess.call(["wine", '--version'])
+                            # Minecraft World
+                            len_n = math.ceil(math.sqrt(num_samples))  # we arrange our samples in a square in the world
+                            x, z = np.unravel_index(n, [len_n, len_n])  # get x, z pos according to index n
+                            posx = x * (level.shape[0] + 5)
+                            posz = z * (level.shape[2] + 5)
+                            save_level_to_world(opt.output_dir, opt.output_name, (posx, 0, posz), level,
+                                                render_token_list, props)
+                            # save_oh_to_wrld_directly(opt.output_dir, opt.output_name, (posx, 0, posz), I_curr.detach(),
+                            #                          opt.block2repr, opt.repr_type)
+                            curr_coords = [[posx, posx + level.shape[0]],
+                                            [0, level.shape[1]],
+                                            [posz, posz + level.shape[2]]]
+                            render_minecraft(opt.output_name, curr_coords, obj_pth, "%d" % n)
+                        except OSError:
+                            pass
+                else:
+                    # Write to server!
+                    opt.mc_server.postToChat("Rendering final sample...")
+
+                    curr_sample = level
+                    for i in range(curr_sample.shape[0]):
+                        for j in range(curr_sample.shape[1]):
+                            for k in range(curr_sample.shape[2]):
+                                opt.mc_server.setBlock(opt.server_render_pos[0] + i,
+                                                       opt.server_render_pos[1] + j,
+                                                       opt.server_render_pos[2] + k,
+                                                       opt.token_list[curr_sample[i, j, k].item()])
+
+                    opt.mc_server.postToChat("Final sample Rendered!")
 
                 # Save torch tensor
                 if save_tensors:
@@ -256,15 +277,20 @@ if __name__ == '__main__':
 
     # Init game specific inputs
     opt.ImgGen = None
-    clear_empty_world(opt.output_dir, opt.output_name)
+    if not opt.server_train:
+        clear_empty_world(opt.output_dir, opt.output_name)
+    else:
+        # connect to the minecraft server running RaspberryJuice
+        opt.mc_server = mc.Minecraft.create()  # assumes default parameters on the server!
     downsample = special_minecraft_downsampling
 
     # Read level according to input arguments
     real = mc_read_level(opt)
 
     if opt.use_multiple_inputs:  # multi-input still doesn't work
-        real = real[0].to(opt.device)
-        opt.level_shape = real[0].shape[2:]
+        # real = real[0].to(opt.device)
+        # opt.level_shape = real[0].shape[2:]
+        raise NotImplementedError("Multi-Input is not implemented with Minecraft.")
     else:
         real = real.to(opt.device)
         opt.level_shape = real.shape[2:]

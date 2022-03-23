@@ -5,6 +5,7 @@ import numpy as np
 import os
 import time
 import shutil
+from tqdm import tqdm
 from loguru import logger
 import torch.nn.functional as F
 
@@ -155,8 +156,43 @@ def read_level(opt: Config):
         # Default coords: Ruins
         opt.coords = ((1044, 1060), (64, 80), (1104, 1120))  # y, z, x
 
-    level, uniques, props = read_level_from_file(opt.input_dir, opt.input_name, opt.coords,
-                                                 opt.block2repr, opt.repr_type)
+    if not opt.server_train:
+        level, uniques, props = read_level_from_file(opt.input_dir, opt.input_name, opt.coords,
+                                                     opt.block2repr, opt.repr_type)
+    else:
+        uniques = []
+        props = []
+        coords = opt.coords
+        # Init level with zeros
+        level = torch.zeros((coords[0][1] - coords[0][0], coords[1][1] - coords[1][0], coords[2][1] - coords[2][0]))
+
+        if opt.server_get_block_data:
+            logger.info("Reading blocks (this may take a while) ...")
+            for j in tqdm(range(coords[0][0], coords[0][1])):
+                for k in range(coords[1][0], coords[1][1]):
+                    for l in range(coords[2][0], coords[2][1]):
+                        block = opt.mc_server.getBlockWithData(j, k, l)
+                        if block not in uniques:
+                            uniques.append(block)
+                        level[j - coords[0][0], k - coords[1][0], l - coords[2][0]] = uniques.index(block)
+        else:
+            blocks = list(opt.mc_server.getBlocks(coords[0][0], coords[1][0], coords[1][0],
+                                                  coords[0][1], coords[1][1], coords[2][1]))
+            count = 0
+            for j in range(coords[0][0], coords[0][1]):
+                for k in range(coords[1][0], coords[1][1]):
+                    for l in range(coords[2][0], coords[2][1]):
+                        if blocks[count] not in uniques:
+                            uniques.append(blocks[count])
+                        level[j - coords[0][0], k - coords[1][0], l - coords[2][0]] = uniques.index(blocks[count])
+                        count += 1
+
+        # we need the one hot encoding
+        oh_level = torch.zeros((1, len(uniques),) + level.shape)
+        for i, tok in enumerate(uniques):
+            oh_level[0, i] = (level == i)
+
+        level = oh_level
 
     if opt.repr_type == "neighbert" or opt.repr_type == "one-hot-neighbors":
         print("Starting neighbert level...")
