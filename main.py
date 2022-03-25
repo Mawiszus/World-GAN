@@ -4,14 +4,16 @@ from generate_samples import generate_samples
 from block_histograms import make_block_histogram
 from train import train
 from minecraft.level_utils import read_level as mc_read_level
-from minecraft.level_utils import clear_empty_world
+from minecraft.level_utils import clear_empty_world, one_hot_to_blockdata_level
 from config import Config
 from loguru import logger
 import wandb
 import sys
 import os
+import time
 import torch
 import mcpi.minecraft as mc
+from train_single_scale import render_to_server
 
 
 def get_tags(opt):
@@ -59,6 +61,13 @@ def main():
 
     # Read level according to input arguments
     real = mc_read_level(opt)
+
+    if opt.server_train:
+        # Show off if you've read the input correctly
+        render_to_server(one_hot_to_blockdata_level(real, opt.token_list, opt.block2repr, opt.repr_type), opt)
+        opt.mc_server.postToChat("Training Starting in 5 seconds")
+        time.sleep(5)
+
 
     # Multi-Input is taken over from old code but not implemented for Minecraft
     if opt.use_multiple_inputs:

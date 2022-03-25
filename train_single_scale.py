@@ -328,19 +328,9 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
                     except OSError:
                         pass
                 else:
-                    # We're posting this directly on the server!
-                    opt.mc_server.postToChat("Rendering sample...")
-
-                    curr_sample = to_level(fake.detach(), token_list, opt.block2repr, opt.repr_type)
-                    for i in range(curr_sample.shape[0]):
-                        for j in range(curr_sample.shape[1]):
-                            for k in range(curr_sample.shape[2]):
-                                opt.mc_server.setBlock(opt.server_render_pos[0] + i,
-                                                       opt.server_render_pos[1] + j,
-                                                       opt.server_render_pos[2] + k,
-                                                       token_list[curr_sample[i, j, k].item()])
-
-                    opt.mc_server.postToChat("Sample Rendered!")
+                    # Server render!
+                    t_level = to_level(G(Z_opt.detach(), z_prev), token_list, opt.block2repr, opt.repr_type)
+                    render_to_server(t_level, opt)
 
             # Learning Rate scheduler step
             schedulerD.step()
@@ -355,6 +345,22 @@ def train_single_scale(D, G, reals, generators, noise_maps, input_from_prev_scal
     save_networks(G, D, z_opt, opt)
     wandb.save(opt.outf)
     return z_opt, input_from_prev_scale, G
+
+
+def render_to_server(curr_sample, ns_opt):
+    # We're posting this directly on the server!
+    ns_opt.mc_server.postToChat("Rendering sample...")
+
+    # curr_sample = to_level(fake.detach(), token_list, opt.block2repr, opt.repr_type)
+    for i in range(curr_sample.shape[0]):
+        for j in range(curr_sample.shape[1]):
+            for k in range(curr_sample.shape[2]):
+                ns_opt.mc_server.setBlock(ns_opt.server_render_pos[0] + i,
+                                          ns_opt.server_render_pos[1] + j,
+                                          ns_opt.server_render_pos[2] + k,
+                                          ns_opt.token_list[curr_sample[i, j, k].item()])
+
+    ns_opt.mc_server.postToChat("Sample Rendered!")
 
 
 def render_world(render_path: str, opt: Config, num_viewpoints: int = 20):

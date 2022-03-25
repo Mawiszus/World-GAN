@@ -25,6 +25,7 @@ from minecraft.level_renderer import render_minecraft
 from generate_noise import generate_spatial_noise
 from models import load_trained_pyramid
 from utils import interpolate3D
+from train_single_scale import render_to_server
 
 
 class GenerateSamplesConfig(Config):
@@ -243,18 +244,7 @@ def generate_samples(generators, noise_maps, reals, noise_amplitudes, opt: Gener
                             pass
                 else:
                     # Write to server!
-                    opt.mc_server.postToChat("Rendering final sample...")
-
-                    curr_sample = level
-                    for i in range(curr_sample.shape[0]):
-                        for j in range(curr_sample.shape[1]):
-                            for k in range(curr_sample.shape[2]):
-                                opt.mc_server.setBlock(opt.server_render_pos[0] + i,
-                                                       opt.server_render_pos[1] + j,
-                                                       opt.server_render_pos[2] + k,
-                                                       opt.token_list[curr_sample[i, j, k].item()])
-
-                    opt.mc_server.postToChat("Final sample Rendered!")
+                    render_to_server(level, opt)
 
                 # Save torch tensor
                 if save_tensors:

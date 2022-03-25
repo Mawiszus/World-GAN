@@ -176,15 +176,15 @@ def read_level(opt: Config):
                             uniques.append(block)
                         level[j - coords[0][0], k - coords[1][0], l - coords[2][0]] = uniques.index(block)
         else:
-            blocks = list(opt.mc_server.getBlocks(coords[0][0], coords[1][0], coords[1][0],
-                                                  coords[0][1], coords[1][1], coords[2][1]))
+            blocks = list(opt.mc_server.getBlocks(coords[0][0], coords[1][0], coords[2][0],
+                                                  coords[0][1] - 1, coords[1][1] - 1, coords[2][1] - 1))
             count = 0
-            for j in range(coords[0][0], coords[0][1]):
-                for k in range(coords[1][0], coords[1][1]):
-                    for l in range(coords[2][0], coords[2][1]):
+            for k in range(level.shape[1]):
+                for j in range(level.shape[0]):
+                    for l in range(level.shape[2]):
                         if blocks[count] not in uniques:
                             uniques.append(blocks[count])
-                        level[j - coords[0][0], k - coords[1][0], l - coords[2][0]] = uniques.index(blocks[count])
+                        level[j, k, l] = uniques.index(blocks[count])
                         count += 1
 
         # we need the one hot encoding
